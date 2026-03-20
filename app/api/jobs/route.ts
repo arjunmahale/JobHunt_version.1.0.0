@@ -77,8 +77,17 @@ export async function POST(request: NextRequest) {
       roles_responsibilities: data.roles_responsibilities || '',
       eligibility_criteria: data.eligibility_criteria || '',
       required_skills: data.required_skills || '',
+
+       // ✅ ADD THESE
+      how_to_apply: "",
+      application_deadline: null,
+      work_mode: "",
+      number_of_openings: 1,
+      about_company: "",
+      
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+
     };
 
     const job = await createJob(jobData);
