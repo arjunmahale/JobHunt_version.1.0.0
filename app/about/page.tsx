@@ -1,4 +1,4 @@
-// import { url } from "inspector";
+
 import Link from "next/link";
 
 export default function AboutPage() {
