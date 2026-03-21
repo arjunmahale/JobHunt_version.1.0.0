@@ -26,6 +26,8 @@ export default function EditJobPage() {
         }
 
         const data = await res.json();
+
+        
         const job = data.jobs.find((j: Job) => j.id === jobId);
 
         if (!job) {
