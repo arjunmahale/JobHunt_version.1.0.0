@@ -157,12 +157,14 @@ dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
     )}
 
     {/* NEW FIELD */}
-    {job.number_of_openings && (
+   {/*} {job.number_of_openings && (
       <div>
         <p className="text-xs text-gray-500 mb-1">Openings</p>
         <p className="font-semibold text-gray-900">{job.number_of_openings}</p>
       </div>
     )}
+
+    */}
 
   </div>
 </div>
