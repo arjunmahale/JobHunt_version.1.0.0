@@ -144,6 +144,8 @@ export default function ManageJobsPage() {
                   </td>
                   <td
                     className={`px-4 sm:px-6 py-3 ${(() => {
+                        if (!job.application_deadline) return "text-gray-700"; // ✅ FIX
+
                         const deadline = new Date(job.application_deadline);
                         const today = new Date();
 
@@ -151,14 +153,15 @@ export default function ManageJobsPage() {
                         today.setHours(0, 0, 0, 0);
 
                         return deadline < today
-                          ? "bg-red-500  text-red-800 font-semibold"
+                          ? "bg-red-200 text-red-800 font-semibold"
                           : "text-gray-700";
                       })()
                       }`}
                   >
-                    {new Date(job.application_deadline).toLocaleDateString('en-GB')}
+                    {job.application_deadline
+                      ? new Date(job.application_deadline).toLocaleDateString('en-GB')
+                      : "N/A"}
                   </td>
-
                   <td className="px-4 sm:px-6 py-3 flex gap-3 ">
 
 
