@@ -27,6 +27,7 @@ type EditableAutomationJob = {
   review_status: string;
   publish_status: string;
   created_at: string;
+  scheduled_publish_at?: string | null;
 };
 
 type JobApiResponse = {
@@ -37,6 +38,29 @@ type JobApiResponse = {
 
 function toStringValue(value: string | null | undefined, fallback = '') {
   return String(value ?? fallback);
+}
+
+function toLocalDateTimeInputValue(value: string | null | undefined) {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
+
+function localDateTimeInputToIso(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toISOString();
 }
 
 function buildPreviewMessage(values: Record<string, string>) {
@@ -79,11 +103,9 @@ export default function AutomationJobEditPage() {
   const [publishStatus, setPublishStatus] = useState('');
   const [createdAt, setCreatedAt] = useState('');
   const [publishedSlug, setPublishedSlug] = useState('');
-  const [scheduleAt, setScheduleAt] = useState(() => {
-    const now = new Date();
-    const offset = now.getTimezoneOffset() * 60000;
-    return new Date(now.getTime() - offset).toISOString().slice(0, 16);
-  });
+  const [scheduleAt, setScheduleAt] = useState(() =>
+    toLocalDateTimeInputValue(new Date().toISOString())
+  );
   const [form, setForm] = useState<Record<string, string>>({
     title: '',
     company: '',
@@ -145,6 +167,12 @@ export default function AutomationJobEditPage() {
       setPublishStatus(data.job.publish_status);
       setCreatedAt(data.job.created_at);
       setPublishedSlug(toStringValue(data.published_slug));
+      if (data.job.scheduled_publish_at) {
+        const localScheduledTime = toLocalDateTimeInputValue(data.job.scheduled_publish_at);
+        if (localScheduledTime) {
+          setScheduleAt(localScheduledTime);
+        }
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Failed to load automation job.');
     } finally {
@@ -208,12 +236,17 @@ export default function AutomationJobEditPage() {
       }
 
       if (action === 'schedule') {
+        const scheduleAtIso = localDateTimeInputToIso(scheduleAt);
+        if (!scheduleAtIso) {
+          throw new Error('Invalid schedule date/time.');
+        }
+
         const response = await fetch(`/api/automation/jobs/${jobId}/publish`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ schedule_at: scheduleAt }),
+          body: JSON.stringify({ schedule_at: scheduleAtIso }),
         });
 
         const data = (await response.json()) as { error?: string };
@@ -429,7 +462,7 @@ export default function AutomationJobEditPage() {
           </p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <label className="text-sm font-medium text-gray-700">
-              Schedule publish time
+              Schedule publish time (local timezone)
               <input
                 type="datetime-local"
                 value={scheduleAt}

@@ -164,6 +164,25 @@ export async function listDueScheduledAutomationJobs(limit = 1) {
 
   return (data || []) as AutomationJobRow[];
 }
+
+export async function listQueuedScheduledAutomationJobs(limit = 1) {
+  const { data, error } = await supabaseServer
+    .from('automation_jobs')
+    .select('*')
+    .eq('review_status', 'approved')
+    .eq('publish_status', 'queued')
+    .is('published_job_id', null)
+    .not('scheduled_publish_at', 'is', null)
+    .order('scheduled_publish_at', { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    throw normalizeAutomationError(error, 'automation_jobs');
+  }
+
+  return (data || []) as AutomationJobRow[];
+}
+
 export async function getAutomationJobById(id: string) {
   const { data, error } = await supabaseServer
     .from('automation_jobs')

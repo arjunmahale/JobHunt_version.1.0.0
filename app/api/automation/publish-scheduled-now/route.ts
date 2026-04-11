@@ -10,7 +10,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
     const limit = Number(body?.limit || 1);
-    const result = await publishScheduledAutomationJobs(limit);
+    const forceAllQueued = Boolean(body?.force_all_queued);
+    const result = await publishScheduledAutomationJobs(limit, {
+      includeFuture: forceAllQueued,
+    });
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(

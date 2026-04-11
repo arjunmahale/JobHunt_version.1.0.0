@@ -256,7 +256,7 @@ export default function AutomationPage() {
       const response = await fetch('/api/automation/publish-scheduled-now', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ limit: 5 }),
+        body: JSON.stringify({ limit: 5, force_all_queued: true }),
       });
 
       if (response.status === 401) {
@@ -269,7 +269,16 @@ export default function AutomationPage() {
         throw new Error(data.error || 'Failed to publish scheduled jobs.');
       }
 
-      setMessage(`Scheduled publish run complete. Published ${data.published || 0} job(s).`);
+      const published = Number(data.published || 0);
+      const failed = Number(data.failed || 0);
+      const total = Number(data.total || 0);
+      if (total === 0) {
+        setMessage('Scheduled publish run complete. No queued jobs were available.');
+      } else {
+        setMessage(
+          `Scheduled publish run complete. Attempted ${total} job(s): ${published} published, ${failed} failed.`
+        );
+      }
       await loadDashboard();
     } catch (publishError) {
       setError(
@@ -526,7 +535,7 @@ export default function AutomationPage() {
               <tr>
                 <th className="px-4 py-3">Title</th>
                 <th className="px-4 py-3">Company</th>
-                <th className="px-4 py-3">Scheduled At</th>
+                <th className="px-4 py-3">Scheduled At (Local)</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Actions</th>
               </tr>

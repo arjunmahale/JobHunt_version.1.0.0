@@ -11,6 +11,7 @@ import {
   createDeliveryLog,
   listAutomationJobsForScheduling,
   listDueScheduledAutomationJobs,
+  listQueuedScheduledAutomationJobs,
   findOpenAutomationDuplicate,
   findPublishedDuplicate,
   deleteAutomationJobById,
@@ -169,6 +170,10 @@ type ManualProcessingSummary = {
     input_index: number;
     reason: string;
   }>;
+};
+
+type ScheduledPublishOptions = {
+  includeFuture?: boolean;
 };
 
 function normalizeSpace(value: unknown) {
@@ -1129,12 +1134,15 @@ export async function scheduleAutomationJobPublishing(startAt: string, intervalH
   return { scheduled: scheduledCount };
 }
 
-export async function publishScheduledAutomationJobs(limit = 1) {
-  const dueJobs = await listDueScheduledAutomationJobs(limit);
+export async function publishScheduledAutomationJobs(limit = 1, options: ScheduledPublishOptions = {}) {
+  const normalizedLimit = Number.isFinite(limit) ? Math.max(1, Math.floor(limit)) : 1;
+  const scheduledJobs = options.includeFuture
+    ? await listQueuedScheduledAutomationJobs(normalizedLimit)
+    : await listDueScheduledAutomationJobs(normalizedLimit);
   let published = 0;
   let failed = 0;
 
-  for (const job of dueJobs) {
+  for (const job of scheduledJobs) {
     try {
       const result = await publishJobRecord(job, null, false);
       if (result.failed) {
@@ -1165,7 +1173,7 @@ export async function publishScheduledAutomationJobs(limit = 1) {
     }
   }
 
-  return { published, failed, total: dueJobs.length };
+  return { published, failed, total: scheduledJobs.length };
 }
 
 export async function getAutomationDashboard(limit = 40) {
