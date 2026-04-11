@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function AdminMessagesPage() {
 
     const [messages, setMessages] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const router = useRouter();
 
     useEffect(() => {
         fetchMessages();
@@ -16,6 +18,10 @@ export default function AdminMessagesPage() {
        const res = await fetch("/api/contact/list", {
   cache: "no-store",
 });
+        if (res.status === 401) {
+            router.push("/admin/login");
+            return;
+        }
         const data = await res.json();
 
         setMessages(data.messages || []);

@@ -61,8 +61,29 @@ const relatedJobs = similarJobs.jobs.filter(j => j.slug !== job.slug);
 const structuredData = generateStructuredData(job);
 
 const formatBulletPoints = (text: string) => {
-if (!text) return [];
-return text.split('\n').filter((line) => line.trim().length > 0);
+  if (!text) return [];
+
+  const cleaned = String(text).replace(/\r/g, '').trim();
+  if (!cleaned) return [];
+
+  const normalizeItem = (value: string) =>
+    value.trim().replace(/^(?:[-*•\u2022]|\d+[.)])\s*/g, '').trim();
+
+  let parts = cleaned.split('\n').map(normalizeItem).filter(Boolean);
+
+  if (parts.length <= 1 && cleaned.includes('•')) {
+    parts = cleaned.split('•').map(normalizeItem).filter(Boolean);
+  }
+
+  if (parts.length <= 1 && cleaned.includes(';')) {
+    parts = cleaned.split(';').map(normalizeItem).filter(Boolean);
+  }
+
+  if (parts.length <= 1 && cleaned.includes(',')) {
+    parts = cleaned.split(',').map(normalizeItem).filter(Boolean);
+  }
+
+  return parts.length > 0 ? parts : [cleaned];
 };
 
 return (

@@ -16,26 +16,24 @@ export default function EditJobPage() {
   useEffect(() => {
     const fetchJob = async () => {
       try {
-        // You'll need to create an endpoint to get a single job by ID
-        // For now, we'll fetch all jobs and find the one we need
-        const res = await fetch(`/api/jobs?limit=100`);
+        const res = await fetch(`/api/jobs/${jobId}`);
 
         if (res.status === 401) {
           router.push('/admin/login');
           return;
         }
 
-        const data = await res.json();
-
-        
-        const job = data.jobs.find((j: Job) => j.id === jobId);
-
-        if (!job) {
+        if (res.status === 404) {
           setError('Job not found');
           return;
         }
 
-        setFormData(job);
+        if (!res.ok) {
+          throw new Error('Failed to fetch job');
+        }
+
+        const data = await res.json();
+        setFormData(data as Job);
       } catch (err) {
         console.error('Failed to fetch job:', err);
         setError('Failed to load job');

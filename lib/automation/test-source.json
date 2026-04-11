@@ -1,0 +1,16 @@
+[
+  {
+    "title": "Software Engineer",
+    "company": "Google",
+    "location": "Bangalore",
+    "description": "Java developer role",
+    "apply_link": "https://careers.google.com"
+  },
+  {
+    "title": "Full Stack Developer",
+    "company": "Amazon",
+    "location": "Hyderabad",
+    "description": "React + Spring Boot",
+    "apply_link": "https://amazon.jobs"
+  }
+]

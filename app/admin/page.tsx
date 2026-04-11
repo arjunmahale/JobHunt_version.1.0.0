@@ -19,7 +19,6 @@ export default function AdminDashboard() {
           fetch('/api/categories'),
         ]);
 
-        // If unauthorized, redirect to login
         if (jobsRes.status === 401 || catRes.status === 401) {
           router.push('/admin/login');
           return;
@@ -45,7 +44,7 @@ export default function AdminDashboard() {
 
   if (error) {
     return (
-      <div className="bg-red-100 text-red-700 p-4 rounded">
+      <div className="rounded bg-red-100 p-4 text-red-700">
         {error}
       </div>
     );
@@ -53,60 +52,70 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <h1 className="text-4xl font-bold text-primary mb-8">Admin Dashboard</h1>
+      <h1 className="mb-8 text-4xl font-bold text-primary">Admin Dashboard</h1>
 
       {loading ? (
-        <div className="text-center py-12">
+        <div className="py-12 text-center">
           <p className="text-gray-600">Loading dashboard...</p>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h3 className="text-gray-600 text-sm font-semibold mb-2">Total Jobs</h3>
+          <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+            <div className="rounded-lg bg-white p-6 shadow-lg">
+              <h3 className="mb-2 text-sm font-semibold text-gray-600">Total Jobs</h3>
               <p className="text-4xl font-bold text-secondary">{stats.total}</p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h3 className="text-gray-600 text-sm font-semibold mb-2">Categories</h3>
+            <div className="rounded-lg bg-white p-6 shadow-lg">
+              <h3 className="mb-2 text-sm font-semibold text-gray-600">Categories</h3>
               <p className="text-4xl font-bold text-secondary">{stats.categories}</p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h3 className="text-gray-600 text-sm font-semibold mb-2">Status</h3>
-              <p className="text-4xl font-bold text-accent">Active</p>
+            <div className="rounded-lg bg-white p-6 shadow-lg">
+              <h3 className="mb-2 text-sm font-semibold text-gray-600">Automation</h3>
+              <p className="text-2xl font-bold text-accent">Ready</p>
             </div>
           </div>
 
-          <div className="bg-gray-00 rounded-lg shadow-lg p-6">
-            <h2 className="text-2xl font-bold text-primary mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-lg bg-white p-6 shadow-lg">
+            <h2 className="mb-4 text-2xl font-bold text-primary">Quick Actions</h2>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Link
                 href="/admin/jobs/new"
-                className="bg-indigo-300 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg text-center transition"
+                className="rounded-lg bg-indigo-300 px-6 py-3 text-center font-bold text-white transition hover:bg-blue-600"
               >
                 + Add New Job
               </Link>
               <Link
                 href="/admin/jobs"
-                className="bg-indigo-300 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg text-center transition"
+                className="rounded-lg bg-indigo-300 px-6 py-3 text-center font-bold text-white transition hover:bg-gray-700"
               >
                 Manage Jobs
               </Link>
-
-   <Link
+              <Link
+                href="/admin/published-jobs"
+                className="rounded-lg bg-indigo-300 px-6 py-3 text-center font-bold text-white transition hover:bg-gray-700"
+              >
+                Published Jobs
+              </Link>
+              <Link
+                href="/admin/automation"
+                className="rounded-lg bg-indigo-300 px-6 py-3 text-center font-bold text-white transition hover:bg-blue-700"
+              >
+                Automation Review
+              </Link>
+              <Link
+                href="/admin/manual-jobs"
+                className="rounded-lg bg-indigo-300 px-6 py-3 text-center font-bold text-white transition hover:bg-blue-700"
+              >
+                Manual Upload
+              </Link>
+              <Link
                 href="/admin/messages"
-                className="bg-indigo-300 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg text-center transition"
+                className="rounded-lg bg-indigo-300 px-6 py-3 text-center font-bold text-white transition hover:bg-gray-700"
               >
                 Manage Messages
               </Link>
-
-              {/* <Link
-  href="/admin/messages"
-  className="text-gray-600 hover:text-blue-600"
->
-  Messages
-</Link> */}
             </div>
           </div>
         </>
