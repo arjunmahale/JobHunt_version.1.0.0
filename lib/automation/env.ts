@@ -1,6 +1,7 @@
 import { AutomationRuntimeConfig, AutomationSettingsInsert, JobSourceConfig } from './types';
 
 const FALLBACK_APP_URL = 'http://localhost:3000';
+const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1']);
 
 function parseBoolean(value: string | undefined, fallback: boolean) {
   if (value === undefined) {
@@ -42,17 +43,57 @@ function parseSourceConfigs(value: string | undefined): JobSourceConfig[] {
   }
 }
 
-function normalizeAppUrl(value: string | undefined) {
+function normalizeUrlInput(value: string | undefined) {
   const trimmedValue = String(value || '').trim();
   if (!trimmedValue) {
-    return FALLBACK_APP_URL;
+    return null;
+  }
+
+  const valueWithProtocol = /^[a-z]+:\/\//i.test(trimmedValue)
+    ? trimmedValue
+    : `https://${trimmedValue}`;
+
+  try {
+    return new URL(valueWithProtocol).toString().replace(/\/+$/, '');
+  } catch {
+    return null;
+  }
+}
+
+function isLocalUrl(url: string | null) {
+  if (!url) {
+    return false;
   }
 
   try {
-    return new URL(trimmedValue).toString().replace(/\/+$/, '');
+    const parsedUrl = new URL(url);
+    return LOCAL_HOSTNAMES.has(parsedUrl.hostname.toLowerCase());
   } catch {
-    return FALLBACK_APP_URL;
+    return false;
   }
+}
+
+function resolveAppUrl() {
+  const explicitAppUrl = normalizeUrlInput(process.env.NEXT_PUBLIC_APP_URL);
+  const vercelProductionUrl = normalizeUrlInput(process.env.VERCEL_PROJECT_PRODUCTION_URL);
+  const vercelDeploymentUrl = normalizeUrlInput(process.env.VERCEL_URL);
+  const isRunningOnVercel = Boolean(
+    process.env.VERCEL === '1' || process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL
+  );
+
+  if (explicitAppUrl && (!isRunningOnVercel || !isLocalUrl(explicitAppUrl))) {
+    return explicitAppUrl;
+  }
+
+  if (vercelProductionUrl) {
+    return vercelProductionUrl;
+  }
+
+  if (vercelDeploymentUrl) {
+    return vercelDeploymentUrl;
+  }
+
+  return explicitAppUrl || FALLBACK_APP_URL;
 }
 
 function resolveSourceUrl(url: string, appUrl: string) {
@@ -103,7 +144,7 @@ export function getDefaultAutomationSettings(): AutomationSettingsInsert {
 
 export function getAutomationRuntimeConfig(): AutomationRuntimeConfig {
   const defaults = getDefaultAutomationSettings();
-  const appUrl = normalizeAppUrl(process.env.NEXT_PUBLIC_APP_URL);
+  const appUrl = resolveAppUrl();
 
   return {
     appUrl,
