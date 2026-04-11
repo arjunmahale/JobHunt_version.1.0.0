@@ -8,6 +8,10 @@ export function createAdminToken(email: string, password: string) {
 
 export async function loginAdmin(email: string, password: string): Promise<LoginResult> {
   // Simple auth - in production, use proper authentication
+  if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
+    return { success: false, error: 'Admin credentials are not configured.' };
+  }
+
   if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
     return { success: true, token: createAdminToken(email, password) };
   }

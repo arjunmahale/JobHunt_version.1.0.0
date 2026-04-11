@@ -23,7 +23,8 @@ export default function AdminLogin() {
       });
 
       if (!res.ok) {
-        setError('Invalid credentials');
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Invalid credentials');
         return;
       }
 
