@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdminRequest } from '@/lib/auth';
 import { generateJobMessage } from '@/lib/automation/delivery';
+import { getAutomationRuntimeConfig } from '@/lib/automation/env';
 import {
   cancelScheduledAutomationJob,
   deleteRejectedAutomationJob,
@@ -171,15 +172,19 @@ export async function PATCH(
       normalized_payload: normalizedPayload,
     });
 
-    const generatedMessage = generateJobMessage({
-      company: sanitized.company,
-      title: sanitized.title,
-      slug: sanitized.slug,
-      experience_level: sanitized.experience_level,
-      location: sanitized.location,
-      salary: sanitized.salary,
-      normalized_payload: sanitized.normalized_payload,
-    });
+    const runtimeConfig = getAutomationRuntimeConfig();
+    const generatedMessage = generateJobMessage(
+      {
+        company: sanitized.company,
+        title: sanitized.title,
+        slug: sanitized.slug,
+        experience_level: sanitized.experience_level,
+        location: sanitized.location,
+        salary: sanitized.salary,
+        normalized_payload: sanitized.normalized_payload,
+      },
+      runtimeConfig.appUrl
+    );
 
     const updatedJob = await updateAutomationJob(currentJob.id, {
       title: sanitized.title,

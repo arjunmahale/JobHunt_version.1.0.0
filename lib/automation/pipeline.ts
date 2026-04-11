@@ -126,16 +126,35 @@ const REJECTED_LOCATION_KEYWORDS = [
   'emea',
 ];
 
-const MANUAL_UPLOAD_SOURCE: JobSourceConfig = {
+const DEFAULT_PUBLIC_APP_URL = 'https://jobhuntportal.vercel.app';
+
+const MANUAL_UPLOAD_SOURCE_BASE: Omit<JobSourceConfig, 'url'> = {
   id: 'manual_admin_upload',
   name: 'Manual Upload',
   type: 'html',
-  url: 'https://jobhuntportal.vercel.app',
   category: 'Technology',
   location: 'India',
 };
 
-const DEFAULT_MANUAL_APPLY_LINK = 'https://jobhuntportal.vercel.app';
+function normalizePublicAppUrl(appUrl: string | null | undefined) {
+  const normalized = String(appUrl || '').trim();
+  if (!normalized) {
+    return DEFAULT_PUBLIC_APP_URL;
+  }
+
+  try {
+    return new URL(normalized).toString().replace(/\/+$/, '');
+  } catch {
+    return DEFAULT_PUBLIC_APP_URL;
+  }
+}
+
+function getManualUploadSource(runtimeConfig: Pick<AutomationRuntimeConfig, 'appUrl'>): JobSourceConfig {
+  return {
+    ...MANUAL_UPLOAD_SOURCE_BASE,
+    url: normalizePublicAppUrl(runtimeConfig.appUrl),
+  };
+}
 
 const TITLE_PATTERNS = [/^(?:job\s*title|title|role|position)\s*[:\-]\s*(.+)$/i];
 const COMPANY_PATTERNS = [/^(?:company|organization|employer)\s*[:\-]\s*(.+)$/i];
@@ -254,14 +273,19 @@ function extractFirstUrl(text: string) {
   return match?.[0] || null;
 }
 
-function buildManualRawJob(rawText: string, index: number): RawFetchedJob {
-  const applyLink = extractFirstUrl(rawText) || DEFAULT_MANUAL_APPLY_LINK;
+function buildManualRawJob(
+  rawText: string,
+  index: number,
+  source: JobSourceConfig,
+  fallbackApplyLink: string
+): RawFetchedJob {
+  const applyLink = extractFirstUrl(rawText) || fallbackApplyLink;
 
   return {
-    sourceId: MANUAL_UPLOAD_SOURCE.id,
-    sourceName: MANUAL_UPLOAD_SOURCE.name,
-    sourceType: MANUAL_UPLOAD_SOURCE.type,
-    sourceUrl: DEFAULT_MANUAL_APPLY_LINK,
+    sourceId: source.id,
+    sourceName: source.name,
+    sourceType: source.type,
+    sourceUrl: source.url,
     externalId: hashText(rawText),
     title: extractLabeledValue(rawText, TITLE_PATTERNS) || getFirstMeaningfulLine(rawText) || null,
     company: extractLabeledValue(rawText, COMPANY_PATTERNS) || null,
@@ -520,8 +544,8 @@ async function publishJobRecord(
   const failedAttempts = deliveryAttempts.filter((attempt) => attempt.status === 'failed');
   const updatedJob = await updateAutomationJob(latestJob.id, {
     slug: publishedSlug,
-    whatsapp_message: generateJobMessage(latestJob),
-    telegram_message: generateJobMessage(latestJob),
+    whatsapp_message: generateJobMessage(latestJob, runtimeConfig.appUrl),
+    telegram_message: generateJobMessage(latestJob, runtimeConfig.appUrl),
     review_status: failedAttempts.length > 0 ? 'failed' : 'published',
     publish_status: failedAttempts.length > 0 ? 'failed' : 'published',
     published_job_id: publishedJobId,
@@ -612,7 +636,7 @@ async function processAutomationJob({
   }
 
   const extractionResult =
-    source.id === MANUAL_UPLOAD_SOURCE.id
+    source.id === MANUAL_UPLOAD_SOURCE_BASE.id
       ? extractStructuredManualJob(rawJob)
       : await extractStructuredJob(rawJob, runtimeConfig);
   const { extracted, model } = extractionResult;
@@ -655,10 +679,10 @@ async function processAutomationJob({
     .join(' ')
     .toLowerCase();
   const isManualITFallback =
-    source.id === MANUAL_UPLOAD_SOURCE.id &&
+    source.id === MANUAL_UPLOAD_SOURCE_BASE.id &&
     includesAnyKeyword(manualSkillSignalText, IT_ROLE_KEYWORDS);
   const isEffectiveITRole = isITRole || isManualITFallback;
-  const shouldApplyTargetingFilter = source.id !== MANUAL_UPLOAD_SOURCE.id;
+  const shouldApplyTargetingFilter = source.id !== MANUAL_UPLOAD_SOURCE_BASE.id;
 
   if (shouldApplyTargetingFilter && (!isEffectiveITRole || !isFresher || !isIndia)) {
     result.skipped = 1;
@@ -679,15 +703,18 @@ async function processAutomationJob({
     return result;
   }
 
-  const generatedMessage = generateJobMessage({
-    company: normalized.company,
-    title: normalized.title,
-    slug: normalized.slug,
-    experience_level: normalized.experience_level,
-    location: normalized.location,
-    salary: normalized.salary,
-    normalized_payload: normalized.normalized_payload,
-  });
+  const generatedMessage = generateJobMessage(
+    {
+      company: normalized.company,
+      title: normalized.title,
+      slug: normalized.slug,
+      experience_level: normalized.experience_level,
+      location: normalized.location,
+      salary: normalized.salary,
+      normalized_payload: normalized.normalized_payload,
+    },
+    runtimeConfig.appUrl
+  );
 
   normalized.whatsapp_message = generatedMessage;
   normalized.telegram_message = generatedMessage;
@@ -884,6 +911,7 @@ export async function processManualJobUploads(jobDescriptions: string[]): Promis
   }
 
   const { runtimeConfig } = await getEffectiveSettings();
+  const manualSource = getManualUploadSource(runtimeConfig);
   const run = await createAutomationRun('admin_manual_upload');
   const summary: ManualProcessingSummary = {
     processed: 0,
@@ -918,8 +946,8 @@ export async function processManualJobUploads(jobDescriptions: string[]): Promis
 
       try {
         const outcome = await processAutomationJob({
-          rawJob: buildManualRawJob(jobDescription, index + 1),
-          source: MANUAL_UPLOAD_SOURCE,
+          rawJob: buildManualRawJob(jobDescription, index + 1, manualSource, manualSource.url),
+          source: manualSource,
           dryRun: false,
           runId: run.id,
           runtimeConfig,

@@ -1,5 +1,7 @@
 import { AutomationRuntimeConfig, AutomationSettingsInsert, JobSourceConfig } from './types';
 
+const FALLBACK_APP_URL = 'http://localhost:3000';
+
 function parseBoolean(value: string | undefined, fallback: boolean) {
   if (value === undefined) {
     return fallback;
@@ -40,6 +42,53 @@ function parseSourceConfigs(value: string | undefined): JobSourceConfig[] {
   }
 }
 
+function normalizeAppUrl(value: string | undefined) {
+  const trimmedValue = String(value || '').trim();
+  if (!trimmedValue) {
+    return FALLBACK_APP_URL;
+  }
+
+  try {
+    return new URL(trimmedValue).toString().replace(/\/+$/, '');
+  } catch {
+    return FALLBACK_APP_URL;
+  }
+}
+
+function resolveSourceUrl(url: string, appUrl: string) {
+  const trimmedUrl = String(url || '').trim();
+  if (!trimmedUrl) {
+    return trimmedUrl;
+  }
+
+  const appOrigin = new URL(appUrl);
+
+  if (trimmedUrl.startsWith('/')) {
+    return new URL(trimmedUrl, appOrigin).toString();
+  }
+
+  try {
+    const parsedUrl = new URL(trimmedUrl);
+    const isLocalHostSource = parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1';
+    const isLocalHostApp = appOrigin.hostname === 'localhost' || appOrigin.hostname === '127.0.0.1';
+
+    if (isLocalHostSource && !isLocalHostApp) {
+      return new URL(`${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`, appOrigin).toString();
+    }
+
+    return parsedUrl.toString();
+  } catch {
+    return trimmedUrl;
+  }
+}
+
+function normalizeSourceConfigs(sourceConfigs: JobSourceConfig[], appUrl: string): JobSourceConfig[] {
+  return sourceConfigs.map((sourceConfig) => ({
+    ...sourceConfig,
+    url: resolveSourceUrl(sourceConfig.url, appUrl),
+  }));
+}
+
 export function getDefaultAutomationSettings(): AutomationSettingsInsert {
   return {
     id: 'default',
@@ -54,9 +103,10 @@ export function getDefaultAutomationSettings(): AutomationSettingsInsert {
 
 export function getAutomationRuntimeConfig(): AutomationRuntimeConfig {
   const defaults = getDefaultAutomationSettings();
+  const appUrl = normalizeAppUrl(process.env.NEXT_PUBLIC_APP_URL);
 
   return {
-    appUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    appUrl,
     automationApiSecret: process.env.AUTOMATION_API_SECRET || null,
     openaiApiKey: process.env.OPENAI_API_KEY || null,
     openaiModel: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
@@ -72,6 +122,6 @@ export function getAutomationRuntimeConfig(): AutomationRuntimeConfig {
     twilioAuthToken: process.env.TWILIO_AUTH_TOKEN || null,
     twilioWhatsappFrom: process.env.TWILIO_WHATSAPP_FROM || null,
     telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || null,
-    sourceConfigs: parseSourceConfigs(process.env.JOB_SOURCE_CONFIG_JSON),
+    sourceConfigs: normalizeSourceConfigs(parseSourceConfigs(process.env.JOB_SOURCE_CONFIG_JSON), appUrl),
   };
 }

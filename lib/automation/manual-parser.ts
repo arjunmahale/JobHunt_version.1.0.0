@@ -1,6 +1,17 @@
 import { ExtractedJobData, RawFetchedJob } from './types';
 
-const DEFAULT_APPLY_LINK = 'https://jobhuntportal.vercel.app';
+const DEFAULT_APPLY_LINK = (() => {
+  const configuredUrl = String(process.env.NEXT_PUBLIC_APP_URL || '').trim();
+  if (!configuredUrl) {
+    return 'https://jobhuntportal.vercel.app';
+  }
+
+  try {
+    return new URL(configuredUrl).toString().replace(/\/+$/, '');
+  } catch {
+    return 'https://jobhuntportal.vercel.app';
+  }
+})();
 
 const TITLE_PATTERNS = [
   /^(?:job\s*title|title|role|position|opening)\s*[:\-]\s*(.+)$/i,

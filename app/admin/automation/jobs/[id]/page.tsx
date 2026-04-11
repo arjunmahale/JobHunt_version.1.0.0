@@ -36,6 +36,19 @@ type JobApiResponse = {
   error?: string;
 };
 
+const PREVIEW_APP_URL = (() => {
+  const configured = String(process.env.NEXT_PUBLIC_APP_URL || '').trim();
+  if (!configured) {
+    return 'https://jobhuntportal.vercel.app';
+  }
+
+  try {
+    return new URL(configured).toString().replace(/\/+$/, '');
+  } catch {
+    return 'https://jobhuntportal.vercel.app';
+  }
+})();
+
 function toStringValue(value: string | null | undefined, fallback = '') {
   return String(value ?? fallback);
 }
@@ -71,8 +84,8 @@ function buildPreviewMessage(values: Record<string, string>) {
   const salary = values.salary || 'Not Disclosed';
   const slug = values.slug || '';
   const jobUrl = slug
-    ? `https://jobhuntportal.vercel.app/jobs/${slug}`
-    : 'https://jobhuntportal.vercel.app/jobs';
+    ? `${PREVIEW_APP_URL}/jobs/${slug}`
+    : `${PREVIEW_APP_URL}/jobs`;
 
   return [
     `\u{1F680} ${company} Hiring 2026`,

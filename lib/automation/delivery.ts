@@ -1,6 +1,6 @@
 import { AutomationJobRow, AutomationRuntimeConfig, DeliveryAttemptResult } from './types';
 
-const PUBLIC_JOB_BASE_URL = 'https://jobhuntportal.vercel.app/jobs';
+const DEFAULT_PUBLIC_APP_URL = 'https://jobhuntportal.vercel.app';
 
 function normalizeWhatsappRecipient(value: string) {
   return value.startsWith('whatsapp:') ? value : `whatsapp:${value}`;
@@ -22,23 +22,38 @@ function cleanMessageValue(value: unknown, fallback: string) {
   return normalized;
 }
 
-function getPublicJobUrl(slug: string | null | undefined) {
+function normalizePublicAppUrl(appUrl: string | null | undefined) {
+  const normalized = String(appUrl || '').trim();
+  if (!normalized) {
+    return DEFAULT_PUBLIC_APP_URL;
+  }
+
+  try {
+    return new URL(normalized).toString().replace(/\/+$/, '');
+  } catch {
+    return DEFAULT_PUBLIC_APP_URL;
+  }
+}
+
+function getPublicJobUrl(slug: string | null | undefined, appUrl: string | null | undefined) {
+  const jobsBaseUrl = `${normalizePublicAppUrl(appUrl)}/jobs`;
   const normalizedSlug = String(slug || '').trim();
-  return normalizedSlug ? `${PUBLIC_JOB_BASE_URL}/${normalizedSlug}` : PUBLIC_JOB_BASE_URL;
+  return normalizedSlug ? `${jobsBaseUrl}/${normalizedSlug}` : jobsBaseUrl;
 }
 
 export function generateJobMessage(
   job: Pick<
     AutomationJobRow,
     'company' | 'title' | 'slug' | 'experience_level' | 'location' | 'salary' | 'normalized_payload'
-  >
+  >,
+  appUrl: string | null | undefined = DEFAULT_PUBLIC_APP_URL
 ) {
   const company = cleanMessageValue(job.company, 'Unknown Company');
   const title = cleanMessageValue(job.title, 'IT Role');
   const experience = cleanMessageValue(job.experience_level, '0-2 Years');
   const location = cleanMessageValue(job.location, 'India');
   const salary = cleanMessageValue(job.salary, 'Not Disclosed');
-  const jobUrl = getPublicJobUrl(job.slug);
+  const jobUrl = getPublicJobUrl(job.slug, appUrl);
 
   return [
     `\u{1F680} ${company} Hiring 2026`,
@@ -80,7 +95,7 @@ async function sendWhatsappMessage(
   const authValue = Buffer.from(
     `${runtimeConfig.twilioAccountSid}:${runtimeConfig.twilioAuthToken}`
   ).toString('base64');
-  const message = generateJobMessage(job);
+  const message = generateJobMessage(job, runtimeConfig.appUrl);
 
   return Promise.all(
     runtimeConfig.whatsappRecipients.map(async (recipient) => {
@@ -165,7 +180,7 @@ async function sendTelegramMessage(
     ];
   }
 
-  const message = generateJobMessage(job);
+  const message = generateJobMessage(job, runtimeConfig.appUrl);
 
   return Promise.all(
     runtimeConfig.telegramChatIds.map(async (recipient) => {
