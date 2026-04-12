@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { publishScheduledAutomationJobs } from '@/lib/automation/pipeline';
 
+export const dynamic = 'force-dynamic';
+
 function isAuthorizedCronRequest(request: NextRequest) {
   const expectedSecret = process.env.CRON_SECRET || process.env.AUTOMATION_API_SECRET;
   if (!expectedSecret) {
@@ -11,14 +13,22 @@ function isAuthorizedCronRequest(request: NextRequest) {
   return authHeader === `Bearer ${expectedSecret}`;
 }
 
-export async function POST(request: NextRequest) {
+function normalizeLimit(value: unknown, fallback = 5) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.max(1, Math.min(50, Math.floor(parsed)));
+}
+
+async function handleScheduledPublish(request: NextRequest, limitValue: unknown) {
   if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const body = await request.json().catch(() => ({}));
-    const limit = Number(body?.limit || 1);
+    const limit = normalizeLimit(limitValue, 5);
     const result = await publishScheduledAutomationJobs(limit);
     return NextResponse.json(result);
   } catch (error) {
@@ -27,4 +37,14 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function GET(request: NextRequest) {
+  const limitValue = request.nextUrl.searchParams.get('limit');
+  return handleScheduledPublish(request, limitValue);
+}
+
+export async function POST(request: NextRequest) {
+  const body = await request.json().catch(() => ({}));
+  return handleScheduledPublish(request, body?.limit);
 }

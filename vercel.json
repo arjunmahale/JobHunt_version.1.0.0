@@ -5,6 +5,10 @@
     {
       "path": "/api/cron/automation",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/publish-scheduled",
+      "schedule": "*/15 * * * *"
     }
   ]
 }
